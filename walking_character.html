@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Walking Character</title>
   <style>
+    /* Theme variables: shared colors used by the page and controls. */
     :root {
       color-scheme: dark;
       --panel: rgba(14, 20, 28, 0.78);
@@ -17,6 +18,7 @@
       --danger: #ef7b65;
     }
 
+    /* Base page setup: removes browser spacing and keeps the app full screen. */
     * {
       box-sizing: border-box;
     }
@@ -35,6 +37,7 @@
       min-height: 100vh;
     }
 
+    /* Stage and canvas: the full-screen area where JavaScript draws the animation. */
     .stage {
       position: fixed;
       inset: 0;
@@ -51,6 +54,7 @@
       background: #111820;
     }
 
+    /* Control panel: bottom toolbar for character, personality, play, reset, and speed. */
     .hud {
       position: fixed;
       left: 50%;
@@ -69,6 +73,7 @@
       box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
     }
 
+    /* Brand label: shows the name of the animation and the active selection. */
     .brand {
       min-width: 148px;
       padding: 0 8px;
@@ -95,6 +100,7 @@
       gap: 8px;
     }
 
+    /* Segmented buttons: grouped buttons that behave like simple tabs. */
     .segmented {
       display: grid;
       grid-auto-flow: column;
@@ -141,6 +147,7 @@
       gap: 8px;
     }
 
+    /* CSS icons: small play, pause, and reset symbols drawn without image files. */
     .icon-button {
       display: grid;
       place-items: center;
@@ -235,6 +242,7 @@
       accent-color: var(--accent);
     }
 
+    /* Scene label: small badge that names the current background mood. */
     .scene-name {
       position: fixed;
       top: 18px;
@@ -259,6 +267,7 @@
       color: rgba(255, 255, 255, 0.72);
     }
 
+    /* Tablet/mobile layout: stacks controls so they fit smaller screens. */
     @media (max-width: 760px) {
       .hud {
         grid-template-columns: 1fr;
@@ -290,6 +299,7 @@
       }
     }
 
+    /* Narrow phone layout: gives segmented buttons more vertical room. */
     @media (max-width: 420px) {
       .hud {
         width: calc(100vw - 20px);
@@ -310,13 +320,16 @@
 </head>
 <body>
   <main class="stage" aria-label="Animated walking character scene">
+    <!-- Canvas: JavaScript draws the background and walking character here. -->
     <canvas id="scene"></canvas>
 
+    <!-- Scene label: shows the selected scene name without affecting the animation. -->
     <div class="scene-name" aria-hidden="true">
       <strong id="sceneTitle">Robot Strut</strong>
       <span id="sceneSubtitle">neon transit deck</span>
     </div>
 
+    <!-- Controls: lets the user change character, walk style, speed, and playback. -->
     <section class="hud" aria-label="Animation controls">
       <div class="brand">
         <strong>Walk Cycle</strong>
@@ -324,12 +337,14 @@
       </div>
 
       <div class="control-groups">
+        <!-- Character buttons: choose which body is drawn. -->
         <div class="segmented" role="group" aria-label="Character">
           <button type="button" data-character="robot" aria-pressed="true">Robot</button>
           <button type="button" data-character="human" aria-pressed="false">Human</button>
           <button type="button" data-character="stick" aria-pressed="false">Stick</button>
         </div>
 
+        <!-- Personality buttons: choose the walk movement and matching mood. -->
         <div class="segmented" role="group" aria-label="Personality">
           <button type="button" data-personality="confident" aria-pressed="true">Confident</button>
           <button type="button" data-personality="lazy" aria-pressed="false">Lazy</button>
@@ -337,6 +352,7 @@
         </div>
       </div>
 
+      <!-- Playback controls: pause, reset, and adjust walking speed. -->
       <div class="actions">
         <button class="icon-button" id="playPause" type="button" aria-label="Pause animation" title="Pause">
           <span class="icon icon-pause" aria-hidden="true"></span>
@@ -353,6 +369,7 @@
   </main>
 
   <script>
+    // DOM references: connects JavaScript to the canvas and control elements.
     const canvas = document.querySelector("#scene");
     const ctx = canvas.getContext("2d");
     const comboLabel = document.querySelector("#comboLabel");
@@ -364,6 +381,7 @@
     const playIcon = playPause.querySelector(".icon");
     const resetButton = document.querySelector("#reset");
 
+    // Animation state: stores the current choices, speed, timing, and canvas size.
     const state = {
       character: "robot",
       personality: "confident",
@@ -377,6 +395,7 @@
       height: 0
     };
 
+    // Display names: readable labels for buttons and the current selection text.
     const characterNames = {
       robot: "Robot",
       human: "Human",
@@ -389,6 +408,7 @@
       sneaky: "Sneaky"
     };
 
+    // Scene names: changes the background label to match the character and mood.
     const sceneCopy = {
       robot: {
         confident: ["Robot Strut", "neon transit deck"],
@@ -407,6 +427,7 @@
       }
     };
 
+    // Walk settings: controls how each personality moves and stands.
     const personalityConfig = {
       confident: {
         stride: 1.16,
@@ -440,6 +461,7 @@
       }
     };
 
+    // Canvas setup: sizes the canvas sharply for the current screen.
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       state.dpr = dpr;
@@ -452,6 +474,7 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
+    // UI helper: marks which character or personality button is selected.
     function setPressed(selector, value) {
       document.querySelectorAll(selector).forEach((button) => {
         const key = button.dataset.character || button.dataset.personality;
@@ -459,6 +482,7 @@
       });
     }
 
+    // UI helper: updates text labels after a control changes.
     function updateLabels() {
       comboLabel.textContent = `${characterNames[state.character]} / ${personalityNames[state.personality]}`;
       const copy = sceneCopy[state.character][state.personality];
@@ -467,30 +491,36 @@
       speedValue.textContent = `${state.speed.toFixed(1)}x`;
     }
 
+    // Position helper: sends the walker back to the left edge.
     function resetWalker() {
       const scale = getScale();
       state.x = -92 * scale;
       state.t = 0;
     }
 
+    // Layout helper: keeps the character size comfortable on different screens.
     function getScale() {
       return Math.max(0.72, Math.min(1.15, state.width / 1100));
     }
 
+    // Layout helper: finds the ground line where the character feet land.
     function groundY() {
       return Math.round(state.height * (state.height < 620 ? 0.68 : 0.71));
     }
 
+    // Math helper: blends between two values when smooth movement is needed.
     function lerp(a, b, amount) {
       return a + (b - a) * amount;
     }
 
+    // Drawing helper: creates vertical background gradients.
     function gradient(colors) {
       const g = ctx.createLinearGradient(0, 0, 0, state.height);
       colors.forEach(([stop, color]) => g.addColorStop(stop, color));
       return g;
     }
 
+    // Background chooser: draws the scene that matches the selected character.
     function drawBackground() {
       if (state.character === "robot") {
         drawRobotBackground();
@@ -501,6 +531,7 @@
       }
     }
 
+    // Robot background: futuristic transit deck with glowing panels and floor grid.
     function drawRobotBackground() {
       const h = state.height;
       const w = state.width;
@@ -543,6 +574,7 @@
       }
     }
 
+    // Human background: city street or park scene that scrolls behind the walker.
     function drawHumanBackground() {
       const h = state.height;
       const w = state.width;
@@ -568,6 +600,7 @@
         ctx.fill();
       }
 
+      // Stable building indexes keep houses from changing height while they scroll.
       const buildingSpacing = 260;
       const buildingScroll = state.t * 22;
       const firstBuilding = Math.floor((buildingScroll - 300) / buildingSpacing);
@@ -605,6 +638,7 @@
       }
     }
 
+    // Human background detail: simple trees for the lazy park mood.
     function drawTree(x, baseY, scale) {
       ctx.fillStyle = "#7d5838";
       ctx.fillRect(x - 5 * scale, baseY - 60 * scale, 10 * scale, 60 * scale);
@@ -616,6 +650,7 @@
       ctx.fill();
     }
 
+    // Stick figure background: notebook-paper world with sketchy lines.
     function drawStickBackground() {
       const h = state.height;
       const w = state.width;
@@ -668,6 +703,7 @@
       }
     }
 
+    // Robot floor helper: draws the perspective grid used in the robot scene.
     function drawGridFloor(y, color, alpha) {
       const w = state.width;
       const h = state.height;
@@ -693,6 +729,7 @@
       ctx.globalAlpha = 1;
     }
 
+    // Character chooser: places the walker, applies bobbing, then draws the selected body.
     function drawWalker() {
       const scale = getScale();
       const baseY = groundY();
@@ -716,6 +753,7 @@
       ctx.restore();
     }
 
+    // Motion helper: calculates opposite arm and leg swing angles for walking.
     function limbAngles(phase, config) {
       const stride = Math.sin(phase) * config.stride;
       const counter = Math.sin(phase + Math.PI) * config.stride;
@@ -724,6 +762,7 @@
       return { stride, counter, bendA, bendB };
     }
 
+    // Drawing helper: adds a soft ground shadow under any character.
     function drawShadow(config) {
       ctx.save();
       ctx.globalAlpha = state.personality === "sneaky" ? 0.18 : 0.24;
@@ -734,6 +773,7 @@
       ctx.restore();
     }
 
+    // Robot character: draws the full robot body, head, arms, legs, and antenna.
     function drawRobot(phase, config) {
       const { stride, counter, bendA, bendB } = limbAngles(phase, config);
       const bodyY = -112;
@@ -779,6 +819,7 @@
       ctx.restore();
     }
 
+    // Robot limb helper: draws one segmented mechanical leg.
     function drawRobotLeg(x, y, swing, bend, color) {
       ctx.save();
       ctx.translate(x, y);
@@ -799,6 +840,7 @@
       ctx.restore();
     }
 
+    // Robot limb helper: draws one segmented mechanical arm.
     function drawRobotArm(x, y, swing, color) {
       ctx.save();
       ctx.translate(x, y);
@@ -818,6 +860,7 @@
       ctx.restore();
     }
 
+    // Human character: draws the full person with clothing, face, hair, arms, and legs.
     function drawHuman(phase, config) {
       const { stride, counter, bendA, bendB } = limbAngles(phase, config);
       drawShadow(config);
@@ -868,6 +911,7 @@
       ctx.restore();
     }
 
+    // Human limb helper: draws one leg with a knee bend and shoe.
     function drawHumanLeg(x, y, swing, bend, color) {
       ctx.save();
       ctx.translate(x, y);
@@ -894,6 +938,7 @@
       ctx.restore();
     }
 
+    // Human limb helper: draws one arm and changes the bend by personality.
     function drawHumanArm(x, y, swing, color, mood) {
       ctx.save();
       ctx.translate(x, y);
@@ -914,6 +959,7 @@
       ctx.restore();
     }
 
+    // Stick character: draws a simple line-art body with personality in the pose.
     function drawStick(phase, config) {
       const { stride, counter, bendA, bendB } = limbAngles(phase, config);
       const ink = state.personality === "sneaky" ? "#f2e7be" : "#202633";
@@ -967,6 +1013,7 @@
       ctx.restore();
     }
 
+    // Stick limb helper: draws one simple line leg with a foot.
     function drawStickLeg(x, y, swing, bend, ink) {
       ctx.save();
       ctx.translate(x, y);
@@ -986,6 +1033,7 @@
       ctx.restore();
     }
 
+    // Stick limb helper: draws one simple line arm.
     function drawStickArm(x, y, swing, ink) {
       ctx.save();
       ctx.translate(x, y);
@@ -1004,6 +1052,7 @@
       ctx.restore();
     }
 
+    // Shape helper: creates rounded rectangles for robot panels and human clothing.
     function roundRect(x, y, width, height, radius) {
       const r = Math.min(radius, width / 2, height / 2);
       ctx.beginPath();
@@ -1015,6 +1064,7 @@
       ctx.closePath();
     }
 
+    // Animation loop: updates time, moves the character, clears, and redraws the scene.
     function tick(now) {
       const dt = Math.min(0.033, (now - state.lastTime) / 1000 || 0);
       state.lastTime = now;
@@ -1035,6 +1085,7 @@
       requestAnimationFrame(tick);
     }
 
+    // Character controls: switch between robot, human, and stick figure.
     document.querySelectorAll("[data-character]").forEach((button) => {
       button.addEventListener("click", () => {
         state.character = button.dataset.character;
@@ -1043,6 +1094,7 @@
       });
     });
 
+    // Personality controls: switch the walk style and matching background mood.
     document.querySelectorAll("[data-personality]").forEach((button) => {
       button.addEventListener("click", () => {
         state.personality = button.dataset.personality;
@@ -1051,11 +1103,13 @@
       });
     });
 
+    // Speed control: changes how fast the character walks across the screen.
     speedInput.addEventListener("input", () => {
       state.speed = Number(speedInput.value);
       updateLabels();
     });
 
+    // Play/pause control: stops or resumes the animation loop movement.
     playPause.addEventListener("click", () => {
       state.running = !state.running;
       playIcon.className = state.running ? "icon icon-pause" : "icon icon-play";
@@ -1063,8 +1117,10 @@
       playPause.title = state.running ? "Pause" : "Play";
     });
 
+    // Reset control: starts the walk from the left edge again.
     resetButton.addEventListener("click", resetWalker);
 
+    // Resize handler: keeps the canvas and character scale correct after window changes.
     window.addEventListener("resize", () => {
       resize();
       if (state.x > state.width) {
@@ -1072,6 +1128,7 @@
       }
     });
 
+    // Startup: prepare the canvas, place the walker, update labels, then animate.
     resize();
     resetWalker();
     updateLabels();
